@@ -1,0 +1,1140 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mystery Dot Studio 2.3 — Color by Number Smooth Engine — Build CBN.003</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--purple:#6d28d9;--light:#fbfaff;--line:#e6e0f2;--text:#222;--muted:#667085}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--light);color:var(--text)}
+header{padding:16px 20px;background:white;border-bottom:1px solid var(--line)}
+h1{margin:0;color:var(--purple);font-size:26px}.sub{color:var(--muted);font-size:13px;margin-top:3px}
+.wrap{display:grid;grid-template-columns:380px 1fr;gap:12px;padding:12px}
+.card{background:white;border:1px solid var(--line);border-radius:14px;padding:14px}
+h3{margin:12px 0 8px}
+button,label.file{border:1px solid var(--line);background:white;border-radius:10px;padding:9px 12px;font-weight:700;display:inline-block;margin:3px;cursor:pointer}
+.primary,.active{background:var(--purple)!important;color:white!important}
+.preset{background:#f5f0ff}
+input[type=file]{display:none}
+label{display:block;font-size:12px;font-weight:700;margin-top:10px}
+.row{display:grid;grid-template-columns:1fr 72px;gap:8px;align-items:center}
+.row span{border:1px solid var(--line);border-radius:8px;padding:5px;text-align:center;font-size:12px;background:#fff}
+input[type=range]{width:100%;accent-color:var(--purple)}
+select{width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;background:white;font-weight:700}
+canvas{display:block;width:100%;height:auto;background:white;border:2px solid var(--purple);border-radius:12px}
+pre{white-space:pre-wrap;background:#111;color:#9cff9c;border-radius:10px;padding:10px;font-size:12px;line-height:1.35;max-height:170px;overflow:auto}
+.small{font-size:13px;color:var(--muted);line-height:1.4}
+.toolbar{position:sticky;top:0;background:white;z-index:2;padding-bottom:10px}
+.modeBox{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fcfbff}
+.badge{display:inline-block;background:#f5f0ff;color:var(--purple);border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}
+@media(max-width:850px){.wrap{grid-template-columns:1fr}.card{padding:10px}h1{font-size:21px}header{padding:12px}}
+@media print{aside,header,.toolbar{display:none}.wrap{display:block;padding:0}.card{border:none}canvas{border:none;width:100%}}
+
+.bookPage{width:8.5in;height:11in;background:white;border:1px solid #ddd;margin:16px auto;padding:.5in;position:relative;page-break-after:always;overflow:hidden}
+.bookPage h1,.bookPage h2{text-align:center}
+.bookPuzzleImg{display:block;max-width:100%;max-height:9.3in;margin:0 auto}
+.answerGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.answerItem{border:1px solid #ddd;padding:8px;text-align:center;font-size:12px}
+.answerItem img{max-width:100%;max-height:3.2in}
+.pageNum{position:absolute;bottom:.22in;left:0;right:0;text-align:center;font-size:12px;color:#555}
+@media print{
+ body{background:white}
+ aside,header,.toolbar,main>.card:not(#bookPreview){display:none!important}
+ .wrap{display:block;padding:0}
+ #bookPreview{display:block!important;border:none;margin:0!important;padding:0!important}
+ #bookPreview>h2{display:none}
+ .bookPage{border:none;margin:0;box-shadow:none}
+}
+
+
+.progressOuter{height:12px;background:#eee;border-radius:999px;overflow:hidden;margin:8px 0}
+.progressInner{height:100%;width:0%;background:var(--purple);transition:width .2s}
+.queueTools{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.bookControls{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fcfbff;margin-top:8px}
+.bookControls input[type=text], .bookControls textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px}
+""
+@media (min-width:850px) and (max-width:1180px){
+ .wrap{grid-template-columns:330px 1fr;gap:10px;padding:10px}
+ button,label.file{padding:8px 10px;font-size:13px}
+ h3{font-size:17px}
+ .card{padding:12px}
+}
+@media (pointer:coarse){
+ button,label.file,select,input[type=text],textarea{min-height:44px}
+ input[type=range]{height:34px}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>Mystery Dot Studio 2.0</h1>
+<div class="sub"><span class="badge">Build CBN.003</span> Adds Color by Number v3 smooth engine: line-art style outlines, smoother posterized regions, and better iPad/tablet layout.</div>
+</header>
+
+<div class="wrap">
+<aside class="card">
+<h3>Image</h3>
+<label class="file primary" for="file">Open Image</label>
+<input id="file" type="file" accept="image/*">
+<button onclick="render()">Generate</button>
+<button class="preset" onclick="presetClean()">Clean Portrait</button>
+<button class="preset" onclick="presetDetail()">More Detail</button>
+
+<h3>Project</h3>
+<button onclick="newProject()">New Project</button>
+<button onclick="saveProject()">Save .mds</button>
+<label class="file" for="projectFile">Load .mds</label>
+<input id="projectFile" type="file" accept=".mds,application/json">
+<label>Project Name</label>
+<input id="projectName" type="text" value="Untitled Mystery Dot Project" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+
+<h3>Activity Engine</h3>
+<label>Activity Type</label>
+<select id="activityType" onchange="activityChanged()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<option value="mysteryDots" selected>Mystery Dots</option>
+<option value="colorByNumber">Color by Number — placeholder</option>
+<option value="colorByLetter">Color by Letter — placeholder</option>
+<option value="dotMarker">Dot Marker — placeholder</option>
+<option value="mosaic">Mosaic Coloring — placeholder</option>
+<option value="hiddenPicture">Hidden Picture — placeholder</option>
+</select>
+<div id="activityInfo" style="font-size:12px;border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px;background:#fcfbff;">Mystery Dots is the active production module.</div>
+<div id="cbnControls" style="display:none;border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px;background:#fff;">
+<h4 style="margin:4px 0 8px;">Color by Number Controls</h4>
+<label>Region Smooth Detail</label><div class="row"><input id="cbnCellSize" type="range" min="4" max="22" value="8"><span id="cbnCellSizeVal"></span></div>
+<label>Color Count</label><div class="row"><input id="cbnColors" type="range" min="3" max="16" value="10"><span id="cbnColorsVal"></span></div>
+<label>Outline Thickness</label><div class="row"><input id="cbnLine" type="range" min=".2" max="4" step=".1" value="1.1"><span id="cbnLineVal"></span></div>
+<label>Number Size</label><div class="row"><input id="cbnNumberSize" type="range" min="6" max="24" value="10"><span id="cbnNumberSizeVal"></span></div>
+<label>Smoothing Passes</label><div class="row"><input id="cbnSmooth" type="range" min="0" max="8" value="4"><span id="cbnSmoothVal"></span></div>
+<label>Remove Tiny Regions</label><div class="row"><input id="cbnMinRegion" type="range" min="1" max="100" value="24"><span id="cbnMinRegionVal"></span></div>
+<label>Line Art Detail</label><div class="row"><input id="cbnEdgeDetail" type="range" min="10" max="100" value="55"><span id="cbnEdgeDetailVal"></span></div>
+<label>Smooth Filled Preview</label><div class="row"><input id="cbnPreviewSmooth" type="range" min="0" max="100" value="70"><span id="cbnPreviewSmoothVal"></span></div>
+</div>
+
+<h3>Batch Queue</h3>
+<label class="file" for="batchFiles">Add Images</label>
+<input id="batchFiles" type="file" accept="image/*" multiple>
+<button onclick="startBatch()">Start Batch</button>
+<button onclick="pauseBatch()">Pause</button>
+<button onclick="clearBatch()">Clear</button>
+<button onclick="downloadBatchZip()">Download ZIP</button>
+<div class="progressOuter"><div id="batchProgress" class="progressInner"></div></div>
+<div id="batchProgressText" class="small">Batch progress: 0%</div>
+<p class="small"><b>Batch crop note:</b> Batch uses the current Fit Mode and crop settings for every image.</p>
+<label>Batch Export View</label>
+<select id="batchView" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<option value="dots" selected>Outlined Coloring Pages</option>
+<option value="filled">Filled Preview Pages</option>
+<option value="both">Both Outlined + Filled</option>
+</select>
+<div id="batchList" style="font-size:12px;border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px;max-height:180px;overflow:auto;background:#fcfbff;">No batch images added.</div>
+
+<h3>Activity Modules</h3>
+<div id="moduleList" style="font-size:12px;border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px;background:#fcfbff;"></div>
+<h3>Book Builder</h3>
+<label>Book Title</label>
+<input id="bookTitle" type="text" value="My Mystery Dot Book" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<label>Subtitle</label>
+<input id="bookSubtitle" type="text" value="Color the dots to reveal the picture" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<label>Author / Shop Name</label>
+<input id="bookAuthor" type="text" value="" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<label>Book Size</label>
+<select id="bookSize" onchange="applyBookSize()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<option value="letter" selected>US Letter 8.5 x 11</option>
+<option value="a4">A4</option>
+<option value="square">Square 8 x 8</option>
+<option value="kdp6x9">KDP 6 x 9</option>
+</select>
+<label><input id="includeTitlePage" type="checkbox" checked> Include title page</label>
+<label><input id="includeInstructions" type="checkbox" checked> Include instruction page</label>
+<label><input id="includeAnswerKey" type="checkbox" checked> Include answer key pages</label>
+<label><input id="includePageNumbers" type="checkbox" checked> Include page numbers</label>
+<label><input id="includeCopyright" type="checkbox" checked> Include copyright page</label>
+<label><input id="includeNotes" type="checkbox"> Include notes pages</label>
+<label>Notes Pages Count</label>
+<input id="notesCount" type="number" min="0" max="20" value="2" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<label>Copyright Text</label>
+<textarea id="copyrightText" rows="3" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">Copyright © 2026. All rights reserved.</textarea>
+<button onclick="buildBookPreview()">Build Book Preview</button>
+<button onclick="printBook()">Print / Save Book PDF</button>
+<button onclick="saveBookProject()">Save Book Project</button>
+<button onclick="clearBookPreview()">Clear Preview</button>
+<div id="bookStatus" style="font-size:12px;border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px;background:#fcfbff;">Book Builder ready.</div>
+
+<h3>Engine</h3>
+<div class="modeBox">
+<select id="engine" onchange="render()">
+<option value="classic" selected>Classic Clean — SA4 Production</option>
+<option value="hex">Hex Clean — Alternate Style</option>
+</select>
+<p class="small" id="engineNote">Classic is the safest main production renderer.</p>
+</div>
+
+<h3>View</h3>
+<button id="btnDots" class="active" onclick="setView('dots')">Outlined Dots</button>
+<button id="btnFilled" onclick="setView('filled')">Filled Preview</button>
+<button id="btnImportance" onclick="setView('importance')">Detail Map</button>
+<button id="btnOriginal" onclick="setView('original')">Original</button>
+
+<h3>Image Fit / Crop</h3>
+<label>Fit Mode</label>
+<select id="fitMode" onchange="onFitModeChange()" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;">
+<option value="fit" selected>Fit Entire Image — no crop</option>
+<option value="fill">Fill Page — crop edges</option>
+<option value="stretch">Stretch — no crop, may distort</option>
+<option value="manual">Manual Crop</option>
+</select>
+<button onclick="setFitModeQuick('fit')">Fit</button>
+<button onclick="setFitModeQuick('fill')">Fill</button>
+<button onclick="centerCrop()">Center</button>
+<button onclick="resetCrop()">Reset Crop</button>
+<p class="small" id="fitModeNote">Fit Entire Image keeps the full picture visible and adds white margins if needed.</p>
+
+<h3>Canvas / Crop</h3>
+<label>Canvas Width</label><div class="row"><input id="canvasW" type="range" min="300" max="1200" value="750"><span id="canvasWVal"></span></div>
+<label>Canvas Height</label><div class="row"><input id="canvasH" type="range" min="300" max="1600" value="1000"><span id="canvasHVal"></span></div>
+<label>Crop Zoom</label><div class="row"><input id="zoom" type="range" min="70" max="220" value="110"><span id="zoomVal"></span></div>
+<label>X Offset</label><div class="row"><input id="xoff" type="range" min="-100" max="100" value="0"><span id="xoffVal"></span></div>
+<label>Y Offset</label><div class="row"><input id="yoff" type="range" min="-100" max="100" value="0"><span id="yoffVal"></span></div>
+
+<h3>Dot Layout</h3>
+<label>Base Spacing</label><div class="row"><input id="space" type="range" min="7" max="30" value="12"><span id="spaceVal"></span></div>
+<label>Adaptive Strength</label><div class="row"><input id="adaptive" type="range" min="0" max="100" value="38"><span id="adaptiveVal"></span></div>
+<label>Feature Tightening</label><div class="row"><input id="tighten" type="range" min="0" max="100" value="42"><span id="tightenVal"></span></div>
+<label>Flat Area Loosening</label><div class="row"><input id="loosen" type="range" min="0" max="100" value="28"><span id="loosenVal"></span></div>
+<label>Detail Smooth</label><div class="row"><input id="impSmooth" type="range" min="0" max="20" value="7"><span id="impSmoothVal"></span></div>
+
+<h3>Detail Map</h3>
+<label>Edge Weight</label><div class="row"><input id="edgeWeight" type="range" min="0" max="100" value="70"><span id="edgeWeightVal"></span></div>
+<label>Texture Weight</label><div class="row"><input id="textureWeight" type="range" min="0" max="100" value="55"><span id="textureWeightVal"></span></div>
+<label>Midtone Weight</label><div class="row"><input id="midtoneWeight" type="range" min="0" max="100" value="28"><span id="midtoneWeightVal"></span></div>
+
+<h3>Dots / Tone</h3>
+<label>Dot Size</label><div class="row"><input id="dotSize" type="range" min=".1" max="1.5" step=".01" value=".75"><span id="dotSizeVal"></span></div>
+<label>Growth Curve</label><div class="row"><input id="growth" type="range" min=".3" max="2.5" step=".05" value=".85"><span id="growthVal"></span></div>
+<label>Local Contrast</label><div class="row"><input id="contrast" type="range" min="0" max="100" value="16"><span id="contrastVal"></span></div>
+<label>Gamma</label><div class="row"><input id="gamma" type="range" min=".3" max="2.5" step=".05" value=".84"><span id="gammaVal"></span></div>
+<label>Circle Stroke</label><div class="row"><input id="stroke" type="range" min=".2" max="3" step=".05" value=".8"><span id="strokeVal"></span></div>
+<label>Minimum Dot</label><div class="row"><input id="minDot" type="range" min="0" max="4" step=".05" value=".2"><span id="minDotVal"></span></div>
+<label>Adaptive Dot Size</label><div class="row"><input id="adaptiveDotSize" type="range" min="0" max="100" value="18"><span id="adaptiveDotSizeVal"></span></div>
+<label>Adaptive Ring Thickness</label><div class="row"><input id="adaptiveStroke" type="range" min="0" max="100" value="24"><span id="adaptiveStrokeVal"></span></div>
+<label>Stroke Safety</label><div class="row"><input id="strokeSafety" type="range" min="0" max="100" value="68"><span id="strokeSafetyVal"></span></div>
+
+<h3>Hex Options</h3>
+<label>Hex Strength</label><div class="row"><input id="hexStrength" type="range" min="0" max="100" value="100"><span id="hexStrengthVal"></span></div>
+<label>Row Offset</label><div class="row"><input id="rowOffset" type="range" min="0" max="100" value="52"><span id="rowOffsetVal"></span></div>
+<label>Vertical Compression</label><div class="row"><input id="verticalCompression" type="range" min="80" max="110" value="86"><span id="verticalCompressionVal"></span></div>
+<label>Hex Smoothness</label><div class="row"><input id="hexSmoothness" type="range" min="0" max="100" value="82"><span id="hexSmoothnessVal"></span></div>
+
+<h3>Status</h3>
+<pre id="log">CBN.003 loaded. Open an image to begin.</pre>
+</aside>
+
+<main class="card">
+<div class="toolbar">
+<button class="primary" onclick="downloadPNG()">Download PNG</button>
+<button onclick="downloadSVG()">Download SVG</button>
+<button onclick="window.print()">Print/PDF</button>
+<button onclick="copySettings()">Copy Settings</button>
+</div>
+<canvas id="out" width="750" height="1000"></canvas>
+<section id="bookPreview" class="card" style="display:none;margin:12px;">
+<h2>Book Preview</h2>
+<div id="bookPages"></div>
+</section>
+</main>
+</div>
+
+<script>
+let img=null, view='dots', dots=[];
+const out=document.getElementById('out'), ctx=out.getContext('2d');
+const ids=['canvasW','canvasH','zoom','xoff','yoff','cbnCellSize','cbnColors','cbnLine','cbnNumberSize','cbnSmooth','cbnMinRegion','cbnEdgeDetail','cbnPreviewSmooth','space','adaptive','tighten','loosen','impSmooth','edgeWeight','textureWeight','midtoneWeight','dotSize','growth','contrast','gamma','stroke','minDot','adaptiveDotSize','adaptiveStroke','strokeSafety','hexStrength','rowOffset','verticalCompression','hexSmoothness'];
+function E(id){return document.getElementById(id)}
+function V(id){return parseFloat(E(id).value)}
+function setv(id,v){E(id).value=v}
+function log(msg){E('log').textContent += "\\n" + msg; E('log').scrollTop=E('log').scrollHeight}
+function clearLog(){E('log').textContent='CBN.003 log started.'}
+function fail(err){log("ERROR: " + (err && err.message ? err.message : err)); if(err && err.stack) log(err.stack)}
+function sync(){ids.forEach(id=>E(id+'Val').textContent=E(id).value)}
+ids.forEach(id=>E(id).addEventListener('input',()=>{sync(); out.width=V('canvasW'); out.height=V('canvasH'); if(img)render()}));
+sync();
+window.onerror=(message,source,lineno)=>fail("Window error line "+lineno+": "+message);
+
+function presetClean(){
+ setv('adaptive',38);setv('tighten',42);setv('loosen',28);setv('impSmooth',7);
+ setv('edgeWeight',70);setv('textureWeight',55);setv('midtoneWeight',28);
+ setv('dotSize',.75);setv('growth',.85);setv('contrast',16);setv('gamma',.84);setv('stroke',.8);setv('minDot',.2);
+ setv('adaptiveDotSize',18);setv('adaptiveStroke',24);setv('strokeSafety',68);
+ setv('hexStrength',100);setv('rowOffset',52);setv('verticalCompression',86);setv('hexSmoothness',82);
+ sync(); if(img)render();
+}
+function presetDetail(){
+ setv('adaptive',48);setv('tighten',52);setv('loosen',34);setv('impSmooth',6);
+ setv('edgeWeight',80);setv('textureWeight',68);setv('midtoneWeight',32);
+ setv('dotSize',.74);setv('growth',.82);setv('contrast',20);setv('gamma',.82);setv('stroke',.8);setv('minDot',.2);
+ setv('adaptiveDotSize',24);setv('adaptiveStroke',32);setv('strokeSafety',64);
+ setv('hexStrength',100);setv('rowOffset',52);setv('verticalCompression',86);setv('hexSmoothness',76);
+ sync(); if(img)render();
+}
+function setView(v){
+ view=v;
+ ['Dots','Filled','Importance','Original'].forEach(n=>E('btn'+n).classList.toggle('active',n.toLowerCase()===v));
+ if(img)render();
+}
+E('engine').addEventListener('change',()=>{
+ E('engineNote').textContent=E('engine').value==='classic'?'Classic is the safest main production renderer.':'Hex is the alternate style: still clean, but less square-grid.';
+ if(img)render();
+});
+E('file').addEventListener('change',e=>{
+ clearLog();
+ try{
+  const f=e.target.files[0]; if(!f){log("No file selected.");return}
+  log("Selected file: "+f.name+" ("+f.size+" bytes)");
+  const r=new FileReader();
+  r.onload=ev=>{
+    const im=new Image();
+    im.onload=()=>{img=im;log("Image decoded: "+im.naturalWidth+" x "+im.naturalHeight);render()};
+    im.onerror=()=>fail("Image decode failed.");
+    im.src=ev.target.result;
+  };
+  r.onerror=()=>fail("FileReader failed.");
+  r.readAsDataURL(f);
+ }catch(e){fail(e)}
+});
+
+function onFitModeChange(){
+ const mode=E('fitMode').value;
+ const note=E('fitModeNote');
+ if(mode==='fit') note.textContent='Fit Entire Image keeps the full picture visible and adds white margins if needed.';
+ if(mode==='fill') note.textContent='Fill Page fills the canvas completely, but may crop edges.';
+ if(mode==='stretch') note.textContent='Stretch shows the whole image but may distort its shape.';
+ if(mode==='manual') note.textContent='Manual Crop uses Crop Zoom, X Offset, and Y Offset.';
+ if(img)render();
+}
+function setFitModeQuick(mode){
+ E('fitMode').value=mode;
+ onFitModeChange();
+}
+function centerCrop(){
+ setv('xoff',0);setv('yoff',0);sync();if(img)render();
+}
+function resetCrop(){
+ setv('zoom',100);setv('xoff',0);setv('yoff',0);E('fitMode').value='fit';sync();onFitModeChange();
+}
+function cropRect(){
+ const iw=img.naturalWidth, ih=img.naturalHeight, asp=out.width/out.height;
+ const mode=E('fitMode')?E('fitMode').value:'fit';
+
+ if(mode==='stretch'){
+   return {mode:'stretch', sx:0, sy:0, sw:iw, sh:ih, dx:0, dy:0, dw:out.width, dh:out.height};
+ }
+
+ if(mode==='fit'){
+   const imgAsp=iw/ih;
+   let dw=out.width, dh=out.height;
+   if(imgAsp>asp){dw=out.width; dh=out.width/imgAsp;}
+   else{dh=out.height; dw=out.height*imgAsp;}
+   return {mode:'draw', sx:0, sy:0, sw:iw, sh:ih, dx:(out.width-dw)/2, dy:(out.height-dh)/2, dw, dh};
+ }
+
+ // Fill or manual crop.
+ let z=(mode==='manual') ? V('zoom')/100 : 1;
+ let sw, sh;
+ const imgAsp=iw/ih;
+ if(imgAsp>asp){ sh=ih/z; sw=sh*asp; }
+ else{ sw=iw/z; sh=sw/asp; }
+
+ if(mode==='fill'){
+   // Fill page with centered crop.
+   const scale=Math.min(iw/sw, ih/sh);
+ }
+
+ let cx=iw/2+V('xoff')/100*(iw-sw)/2;
+ let cy=ih/2+V('yoff')/100*(ih-sh)/2;
+ return {
+   mode:'crop',
+   sx:Math.max(0,Math.min(iw-sw,cx-sw/2)),
+   sy:Math.max(0,Math.min(ih-sh,cy-sh/2)),
+   sw, sh,
+   dx:0, dy:0, dw:out.width, dh:out.height
+ };
+}
+function drawImageToCanvasContext(o, c, w, h){
+ o.fillStyle='white'; 
+ o.fillRect(0,0,w,h);
+ if(c.mode==='stretch' || c.mode==='draw'){
+   o.drawImage(img,c.sx,c.sy,c.sw,c.sh,c.dx/w*o.canvas.width,c.dy/h*o.canvas.height,c.dw/w*o.canvas.width,c.dh/h*o.canvas.height);
+ }else{
+   o.drawImage(img,c.sx,c.sy,c.sw,c.sh,0,0,o.canvas.width,o.canvas.height);
+ }
+}
+function blurOne(a,w,h){
+ let b=new Float32Array(a);
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+   let i=y*w+x;
+   b[i]=(a[i]*4+a[i-1]+a[i+1]+a[i-w]+a[i+w]+a[i-w-1]+a[i-w+1]+a[i+w-1]+a[i+w+1])/12;
+ }
+ return b;
+}
+function blurArr(a,w,h,n){let r=a;for(let i=0;i<n;i++)r=blurOne(r,w,h);return r}
+function val(a,w,h,x,y){x=Math.max(0,Math.min(w-1,Math.floor(x)));y=Math.max(0,Math.min(h-1,Math.floor(y)));return a[y*w+x]}
+function bilinear(a,w,h,x,y){
+ let x0=Math.floor(x), y0=Math.floor(y), fx=x-x0, fy=y-y0;
+ let A=val(a,w,h,x0,y0),B=val(a,w,h,x0+1,y0),C=val(a,w,h,x0,y0+1),D=val(a,w,h,x0+1,y0+1);
+ return A*(1-fx)*(1-fy)+B*fx*(1-fy)+C*(1-fx)*fy+D*fx*fy;
+}
+function buildMaps(){
+ const sampleW=260, sampleH=Math.round(sampleW*out.height/out.width);
+ const off=document.createElement('canvas'); off.width=sampleW; off.height=sampleH;
+ const o=off.getContext('2d',{willReadFrequently:true});
+ o.fillStyle='white'; o.fillRect(0,0,sampleW,sampleH);
+ const c=cropRect(); drawImageToCanvasContext(o,c,out.width,out.height);
+ const data=o.getImageData(0,0,sampleW,sampleH).data;
+ let raw=new Float32Array(sampleW*sampleH);
+ for(let i=0;i<sampleW*sampleH;i++) raw[i]=1-(.299*data[i*4]+.587*data[i*4+1]+.114*data[i*4+2])/255;
+ let smooth=blurArr(raw,sampleW,sampleH,3), broad=blurArr(raw,sampleW,sampleH,8), fine=blurArr(raw,sampleW,sampleH,1);
+ let tone=new Float32Array(raw.length), imp=new Float32Array(raw.length);
+ const contrast=V('contrast')/100, gamma=V('gamma'), ew=V('edgeWeight')/100, tw=V('textureWeight')/100, mw=V('midtoneWeight')/100;
+ for(let y=1;y<sampleH-1;y++)for(let x=1;x<sampleW-1;x++){
+   let i=y*sampleW+x;
+   let gx=Math.abs(raw[i+1]-raw[i-1]), gy=Math.abs(raw[i+sampleW]-raw[i-sampleW]);
+   let edge=Math.min(1,(gx+gy)*3.4);
+   let texture=Math.min(1,Math.abs(raw[i]-smooth[i])*4.2 + Math.abs(fine[i]-smooth[i])*2.2);
+   let t=raw[i]+(raw[i]-broad[i])*contrast;
+   t=Math.max(0,Math.min(1,t));
+   tone[i]=Math.pow(t,gamma);
+   let mid=Math.sin(Math.PI*tone[i]);
+   imp[i]=Math.max(edge*ew, texture*tw, mid*mw);
+ }
+ imp=blurArr(imp,sampleW,sampleH,V('impSmooth'));
+ return {off,tone,imp,w:sampleW,h:sampleH};
+}
+function drawMap(a,w,h){
+ const im=ctx.createImageData(w,h);
+ for(let i=0;i<w*h;i++){let p=255-a[i]*255;im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=p;im.data[i*4+3]=255}
+ const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').putImageData(im,0,0);
+ ctx.imageSmoothingEnabled=false;ctx.drawImage(tmp,0,0,out.width,out.height);
+}
+function drawClassic(maps){
+ const base=V('space'), adapt=V('adaptive')/100, tighten=V('tighten')/100, loosen=V('loosen')/100;
+ const dotSize=V('dotSize'), growth=V('growth'), minDot=V('minDot'), stroke=V('stroke');
+ let count=0;
+ for(let y=0;y<out.height;y+=base){
+   for(let x=0;x<out.width;){
+     const sx=x/out.width*maps.w, sy=y/out.height*maps.h;
+     const t=Math.pow(Math.max(0,Math.min(1,bilinear(maps.tone,maps.w,maps.h,sx,sy))),growth);
+     const im=bilinear(maps.imp,maps.w,maps.h,sx,sy);
+     const factor=1 - adapt*tighten*im*.52 + adapt*loosen*(1-im)*.34;
+     const localSpace=Math.max(base*.58,Math.min(base*1.42,base*factor));
+     let sizeBoost=1 + (V('adaptiveDotSize')/100)*im*.22 - (V('adaptiveDotSize')/100)*(1-im)*.08;
+     let r=minDot+t*((localSpace/2)*dotSize*sizeBoost-minDot);
+     if(r>.05){
+       let safe=V('strokeSafety')/100;
+       let sw=stroke*(1 + (V('adaptiveStroke')/100)*im*(1-safe*.55));
+       drawDot(x,y,r,sw,count++);
+     }
+     x += localSpace;
+   }
+ }
+ return count;
+}
+function drawHex(maps){
+ const base=V('space'), adapt=V('adaptive')/100, tighten=V('tighten')/100, loosen=V('loosen')/100;
+ const dotSize=V('dotSize'), growth=V('growth'), minDot=V('minDot'), stroke=V('stroke');
+ const hexStrength=V('hexStrength')/100, rowOffset=V('rowOffset')/100, vComp=V('verticalCompression')/100, hexSmooth=V('hexSmoothness')/100;
+ let count=0,row=0;
+ for(let y=0;y<out.height;y+=base*vComp){
+   let offset=(row%2)*base*rowOffset*hexStrength;
+   for(let x=offset;x<out.width;){
+     const sx=x/out.width*maps.w, sy=y/out.height*maps.h;
+     const rawTone=Math.max(0,Math.min(1,bilinear(maps.tone,maps.w,maps.h,sx,sy)));
+     const t=Math.pow(rawTone,growth);
+     const im=bilinear(maps.imp,maps.w,maps.h,sx,sy);
+     let adaptiveAmount=adapt*(1-im*.32);
+     const factor=1 - adaptiveAmount*tighten*im*.36 + adaptiveAmount*loosen*(1-im)*.24;
+     let localSpace=Math.max(base*.72,Math.min(base*1.28,base*factor));
+     localSpace=localSpace*(1-hexSmooth*.62)+base*(hexSmooth*.62);
+     let sizeBoost=1+(V('adaptiveDotSize')/100)*im*.16-(V('adaptiveDotSize')/100)*(1-im)*.04;
+     let r=minDot+t*((localSpace/2)*dotSize*sizeBoost-minDot);
+     if(r>.05){
+       let safe=V('strokeSafety')/100;
+       let sw=stroke*(1+(V('adaptiveStroke')/100)*im*(1-safe*.55));
+       drawDot(x,y,r,sw,count++);
+     }
+     x += localSpace*.82+base*.18;
+   }
+   row++;
+ }
+ return count;
+}
+function drawDot(x,y,r,sw,index){
+ ctx.lineWidth=sw;
+ ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+ if(view==='filled')ctx.fill();else ctx.stroke();
+ dots[index]={cx:x,cy:y,r:r,sw:sw,filled:view==='filled'};
+}
+
+
+
+const activityModules={
+ mysteryDots:{
+  name:'Mystery Dots',
+  status:'Production',
+  description:'Creates outlined mystery-dot coloring pages and filled answer previews.',
+  renderer:'renderMysteryDots'
+ },
+ colorByNumber:{
+  name:'Color by Number',
+  status:'Beta',
+  description:'Creates merged color-region pages with outlines, region numbers, and filled answer preview.',
+  renderer:'renderColorByNumber'
+ },
+ colorByLetter:{
+  name:'Color by Letter',
+  status:'Planned',
+  description:'Will assign letters to color regions for younger children.',
+  renderer:null
+ },
+ dotMarker:{
+  name:'Dot Marker',
+  status:'Planned',
+  description:'Will create large bingo-dauber circles from images.',
+  renderer:null
+ },
+ mosaic:{
+  name:'Mosaic Coloring',
+  status:'Planned',
+  description:'Will create large geometric coloring blocks.',
+  renderer:null
+ },
+ hiddenPicture:{
+  name:'Hidden Picture',
+  status:'Planned',
+  description:'Will create hidden-object and reveal-style activity pages.',
+  renderer:null
+ }
+};
+
+function renderModuleList(){
+ const box=E('moduleList');
+ if(!box)return;
+ box.innerHTML=Object.entries(activityModules).map(([key,m])=>{
+   const active=E('activityType') && E('activityType').value===key;
+   const color=m.status==='Production'?'#15803d':'#6d28d9';
+   return `<div style="border-bottom:1px solid #eee;padding:5px 0;">
+     <b>${active?'▶ ':''}${m.name}</b> <span style="color:${color};font-weight:700;">${m.status}</span><br>
+     <span style="color:#667085;">${m.description}</span>
+   </div>`;
+ }).join('');
+}
+
+function activityChanged(){
+ const type=E('activityType').value;
+ const mod=activityModules[type];
+ if(E('activityInfo')){
+  E('activityInfo').innerHTML=`<b>${mod.name}</b><br>${mod.description}<br><b>Status:</b> ${mod.status}`;
+ }
+ renderModuleList();
+ if(E('cbnControls'))E('cbnControls').style.display=(type==='colorByNumber')?'block':'none';
+ if(type!=='mysteryDots' && type!=='colorByNumber'){
+  log(mod.name+" is a placeholder module. It uses Mystery Dots rendering until the module is built.");
+ }
+ if(img)render();
+}
+
+let batchItems=[];
+let batchRunning=false;
+let batchPaused=false;
+let batchOutputs=[];
+
+function updateBatchProgress(done,total){
+ const pct=total?Math.round((done/total)*100):0;
+ if(E('batchProgress'))E('batchProgress').style.width=pct+'%';
+ if(E('batchProgressText'))E('batchProgressText').textContent='Batch progress: '+pct+'% ('+done+' / '+total+')';
+}
+function updateBatchList(){
+ const box=E('batchList');
+ if(!box)return;
+ if(batchItems.length===0){box.innerHTML='No batch images added.';return}
+ box.innerHTML=batchItems.map((it,i)=>{
+   const status=it.status||'Waiting';
+   return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:4px 0;">
+     <span>${i+1}. ${it.name}</span><b>${status}</b>
+   </div>`;
+ }).join('');
+}
+
+E('batchFiles').addEventListener('change',e=>{
+ try{
+  const files=[...e.target.files];
+  files.forEach(f=>{
+    batchItems.push({file:f,name:f.name,status:'Waiting',imageData:null});
+  });
+  log("Added "+files.length+" image(s) to batch.");
+  updateBatchList();updateBatchProgress(batchItems.filter(i=>i.status==='Done').length,batchItems.length);
+ }catch(err){fail(err)}
+});
+
+function readFileAsDataURL(file){
+ return new Promise((resolve,reject)=>{
+   const r=new FileReader();
+   r.onload=ev=>resolve(ev.target.result);
+   r.onerror=()=>reject(new Error("Could not read "+file.name));
+   r.readAsDataURL(file);
+ });
+}
+function loadImageFromDataURL(src){
+ return new Promise((resolve,reject)=>{
+   const im=new Image();
+   im.onload=()=>resolve(im);
+   im.onerror=()=>reject(new Error("Could not decode batch image."));
+   im.src=src;
+ });
+}
+function canvasBlob(canvas,type='image/png'){
+ return new Promise(resolve=>canvas.toBlob(resolve,type));
+}
+function sanitizeName(name){
+ return name.replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]+/gi,'_');
+}
+
+async function startBatch(){
+ if(batchRunning)return;
+ if(batchItems.length===0){log("Batch is empty. Add images first.");return}
+ batchRunning=true; batchPaused=false; batchOutputs=[];
+ log("Batch started.");
+ const originalImg=img;
+ const originalView=view;
+ for(let i=0;i<batchItems.length;i++){
+   updateBatchProgress(batchItems.filter(it=>it.status==='Done').length,batchItems.length);
+   if(batchPaused){log("Batch paused.");break}
+   const item=batchItems[i];
+   item.status='Rendering'; updateBatchList();
+   try{
+     const data=await readFileAsDataURL(item.file);
+     img=await loadImageFromDataURL(data);
+     const exportMode=E('batchView').value;
+     const baseName=sanitizeName(item.name);
+     if(exportMode==='dots' || exportMode==='both'){
+       view='dots'; render();
+       const blob=await canvasBlob(out,'image/png');
+       batchOutputs.push({name:baseName+'_outlined.png',blob});
+     }
+     if(exportMode==='filled' || exportMode==='both'){
+       view='filled'; render();
+       const blob=await canvasBlob(out,'image/png');
+       batchOutputs.push({name:baseName+'_filled.png',blob});
+     }
+     item.status='Done';
+     log("Rendered "+item.name);
+   }catch(err){
+     item.status='Error';
+     log("Batch error on "+item.name+": "+err.message);
+   }
+   updateBatchList();updateBatchProgress(batchItems.filter(it=>it.status==='Done').length,batchItems.length);
+   await new Promise(r=>setTimeout(r,50));
+ }
+ img=originalImg;
+ view=originalView;
+ ['Dots','Filled','Importance','Original'].forEach(n=>E('btn'+n).classList.toggle('active',n.toLowerCase()===view));
+ if(img)render();
+ batchRunning=false;
+ updateBatchProgress(batchItems.filter(it=>it.status==='Done').length,batchItems.length);
+ log("Batch finished. Outputs ready: "+batchOutputs.length);
+}
+function pauseBatch(){batchPaused=true;log("Pause requested.");}
+function clearBatch(){
+ batchItems=[];batchOutputs=[];batchRunning=false;batchPaused=false;
+ updateBatchList();updateBatchProgress(0,0);
+ log("Batch cleared.");
+}
+
+// Minimal ZIP writer with STORE method, no compression.
+function crc32(buf){
+ let table=crc32.table||(crc32.table=(()=>{
+   let c,t=[];
+   for(let n=0;n<256;n++){c=n;for(let k=0;k<8;k++)c=((c&1)?(0xedb88320^(c>>>1)):(c>>>1));t[n]=c>>>0}
+   return t;
+ })());
+ let crc=0^(-1);
+ for(let i=0;i<buf.length;i++)crc=(crc>>>8)^table[(crc^buf[i])&0xff];
+ return (crc^(-1))>>>0;
+}
+function u16(n){return [n&255,(n>>>8)&255]}
+function u32(n){return [n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]}
+function strBytes(s){return [...s].map(ch=>ch.charCodeAt(0)&255)}
+async function downloadBatchZip(){
+ try{
+  if(batchOutputs.length===0){log("No batch outputs yet. Run Start Batch first.");return}
+  let files=[];
+  for(const o of batchOutputs){
+    const arr=new Uint8Array(await o.blob.arrayBuffer());
+    files.push({name:o.name,data:arr,crc:crc32(arr)});
+  }
+  let chunks=[], central=[], offset=0;
+  for(const f of files){
+    const name=strBytes(f.name);
+    const local=[
+      ...u32(0x04034b50),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),
+      ...u32(f.crc),...u32(f.data.length),...u32(f.data.length),...u16(name.length),...u16(0),...name
+    ];
+    chunks.push(new Uint8Array(local),f.data);
+    central.push({f,offset,name});
+    offset += local.length + f.data.length;
+  }
+  let centralStart=offset;
+  for(const c of central){
+    const f=c.f,name=c.name;
+    const cd=[
+      ...u32(0x02014b50),...u16(20),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),
+      ...u32(f.crc),...u32(f.data.length),...u32(f.data.length),...u16(name.length),...u16(0),...u16(0),
+      ...u16(0),...u16(0),...u32(0),...u32(c.offset),...name
+    ];
+    chunks.push(new Uint8Array(cd));
+    offset += cd.length;
+  }
+  const centralSize=offset-centralStart;
+  const end=[
+    ...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),
+    ...u32(centralSize),...u32(centralStart),...u16(0)
+  ];
+  chunks.push(new Uint8Array(end));
+  const zipBlob=new Blob(chunks,{type:'application/zip'});
+  const a=document.createElement('a');
+  a.download='mystery_dot_batch_outputs_CBN003.zip';
+  a.href=URL.createObjectURL(zipBlob);
+  a.click();
+  log("ZIP downloaded with "+files.length+" file(s).");
+ }catch(e){fail(e)}
+}
+
+
+E('projectFile').addEventListener('change',e=>{
+ clearLog();
+ try{
+  const f=e.target.files[0]; 
+  if(!f){log("No project selected.");return}
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const p=JSON.parse(ev.target.result);
+      loadProjectObject(p);
+    }catch(err){fail("Could not read project file: "+err.message)}
+  };
+  r.readAsText(f);
+ }catch(e){fail(e)}
+});
+
+function gatherSettings(){
+ const settings={};
+ ids.forEach(id=>settings[id]=E(id).value);
+ settings.engine=E('engine').value;
+ settings.activityType=E('activityType')?E('activityType').value:'mysteryDots';
+ settings.view=view;
+ settings.fitMode=E('fitMode')?E('fitMode').value:'fit';
+ settings.projectName=E('projectName')?E('projectName').value:'Untitled Mystery Dot Project';
+ return settings;
+}
+function applySettings(settings){
+ if(!settings)return;
+ ids.forEach(id=>{ if(settings[id]!==undefined) E(id).value=settings[id]; });
+ if(settings.engine) E('engine').value=settings.engine;
+ if(settings.activityType && E('activityType')) E('activityType').value=settings.activityType;
+ if(settings.fitMode && E('fitMode')) E('fitMode').value=settings.fitMode;
+ if(settings.view) view=settings.view;
+ if(E('projectName') && settings.projectName) E('projectName').value=settings.projectName;
+ sync();
+ ['Dots','Filled','Importance','Original'].forEach(n=>E('btn'+n).classList.toggle('active',n.toLowerCase()===view));
+}
+function saveProject(){
+ try{
+  const project={
+    app:"Mystery Dot Studio",
+    build:"CBN.003",
+    savedAt:new Date().toISOString(),
+    settings:gatherSettings(),
+    imageData: img ? img.src : null,
+    imageInfo: img ? {width:img.naturalWidth,height:img.naturalHeight} : null
+  };
+  const name=(project.settings.projectName||"mystery_dot_project").replace(/[^a-z0-9_-]+/gi,"_");
+  const blob=new Blob([JSON.stringify(project,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.download=name+".mds";
+  a.href=URL.createObjectURL(blob);
+  a.click();
+  log("Project saved: "+a.download);
+ }catch(e){fail(e)}
+}
+function loadProjectObject(project){
+ try{
+  if(!project || project.app!=="Mystery Dot Studio"){
+    log("Warning: this does not look like a Mystery Dot Studio project, but I will try to open it.");
+  }
+  applySettings(project.settings||{});
+  if(project.imageData){
+    const im=new Image();
+    im.onload=()=>{img=im;log("Project loaded with image: "+im.naturalWidth+" x "+im.naturalHeight);render();};
+    im.onerror=()=>fail("Project image could not be decoded.");
+    im.src=project.imageData;
+  }else{
+    img=null;
+    log("Project loaded, but it has no embedded image.");
+    render();
+  }
+ }catch(e){fail(e)}
+}
+function newProject(){
+ img=null;
+ dots=[];
+ if(E('projectName'))E('projectName').value="Untitled Mystery Dot Project";
+ ctx.fillStyle='white';ctx.fillRect(0,0,out.width,out.height);
+ clearLog();
+ log("New project created. Open an image to begin.");
+}
+
+
+
+function clearBookPreview(){
+ if(E('bookPages'))E('bookPages').innerHTML='';
+ if(E('bookPreview'))E('bookPreview').style.display='none';
+ if(E('bookStatus'))E('bookStatus').textContent='Book preview cleared.';
+}
+
+function applyBookSize(){
+ const size=E('bookSize').value;
+ if(size==='letter'){setv('canvasW',750);setv('canvasH',1000);}
+ if(size==='a4'){setv('canvasW',744);setv('canvasH',1052);}
+ if(size==='square'){setv('canvasW',900);setv('canvasH',900);}
+ if(size==='kdp6x9'){setv('canvasW',600);setv('canvasH',900);}
+ sync();
+ if(img)render();
+}
+function bookPageSizeStyle(){
+ const size=E('bookSize').value;
+ if(size==='a4') return 'width:8.27in;height:11.69in;';
+ if(size==='square') return 'width:8in;height:8in;';
+ if(size==='kdp6x9') return 'width:6in;height:9in;';
+ return 'width:8.5in;height:11in;';
+}
+async function renderBatchIfNeededForBook(){
+ if(batchOutputs.length>0) return;
+ if(batchItems.length>0){
+   log("Book Builder needs rendered pages, starting batch first...");
+   const oldView=view;
+   E('batchView').value='both';
+   await startBatch();
+   view=oldView;
+ }
+}
+function getBatchOutputURL(namePart){
+ const item=batchOutputs.find(o=>o.name.includes(namePart));
+ return item ? URL.createObjectURL(item.blob) : null;
+}
+async function buildBookPreview(){
+ try{
+  await renderBatchIfNeededForBook();
+  const pages=E('bookPages');
+  pages.innerHTML='';
+  const style=bookPageSizeStyle();
+  let pageNum=1;
+  const showNums=E('includePageNumbers').checked;
+  const title=E('bookTitle').value||'Mystery Dot Book';
+  const subtitle=E('bookSubtitle').value||'Color the dots to reveal the picture';
+  const author=E('bookAuthor').value||'';
+
+  function addPage(inner){
+    const num=showNums?`<div class="pageNum">${pageNum}</div>`:'';
+    pages.insertAdjacentHTML('beforeend',`<div class="bookPage" style="${style}">${inner}${num}</div>`);
+    pageNum++;
+  }
+
+  if(E('includeTitlePage').checked){
+    addPage(`<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+      <h1>${escapeHtml(title)}</h1>
+      <h2 style="font-weight:normal;color:#555">${escapeHtml(subtitle)}</h2>
+      <p style="margin-top:1in">${escapeHtml(author)}</p>
+    </div>`);
+  }
+  if(E('includeInstructions').checked){
+    addPage(`<h1>How to Use This Book</h1>
+      <p style="font-size:18px;line-height:1.6;margin-top:.5in;">Color in the circles to reveal the hidden picture.</p>
+      <p style="font-size:18px;line-height:1.6;">Use the completed preview or answer key at the back of the book if you want to check the finished image.</p>
+      <p style="font-size:18px;line-height:1.6;">Relax, color slowly, and enjoy watching the mystery picture appear.</p>`);
+  }
+
+
+  if(E('includeCopyright') && E('includeCopyright').checked){
+    const copyText=E('copyrightText').value||'Copyright. All rights reserved.';
+    addPage(`<h1>Copyright</h1><div style="font-size:16px;line-height:1.6;margin-top:1in;white-space:pre-wrap;">${escapeHtml(copyText)}</div>`);
+  }
+
+  if(E('includeNotes') && E('includeNotes').checked){
+    const n=Math.max(0,Math.min(20,parseInt(E('notesCount').value||'0')));
+    for(let i=0;i<n;i++){
+      addPage(`<h1>Notes</h1><div style="margin-top:.5in;">${Array.from({length:18}).map(()=>'<div style="border-bottom:1px solid #bbb;height:.38in;"></div>').join('')}</div>`);
+    }
+  }
+
+  const outlined=batchOutputs.filter(o=>o.name.includes('_outlined'));
+  const filled=batchOutputs.filter(o=>o.name.includes('_filled'));
+  outlined.forEach((o,idx)=>{
+    const url=URL.createObjectURL(o.blob);
+    addPage(`<h2>Puzzle ${idx+1}</h2><img class="bookPuzzleImg" src="${url}">`);
+  });
+
+  if(E('includeAnswerKey').checked && filled.length){
+    addPage(`<h1>Answer Key</h1><p style="text-align:center;font-size:18px;margin-top:1in;">Completed previews for each puzzle.</p>`);
+    for(let i=0;i<filled.length;i+=4){
+      let html='<h2>Answer Key</h2><div class="answerGrid">';
+      filled.slice(i,i+4).forEach((o,j)=>{
+        const url=URL.createObjectURL(o.blob);
+        html += `<div class="answerItem"><img src="${url}"><div>Puzzle ${i+j+1}</div></div>`;
+      });
+      html+='</div>';
+      addPage(html);
+    }
+  }
+
+  E('bookPreview').style.display='block';
+  E('bookStatus').textContent=`Book preview built: ${pageNum-1} pages. Use Print / Save Book PDF.`;
+  log("Book preview built with "+(pageNum-1)+" pages.");
+ }catch(e){fail(e)}
+}
+function printBook(){
+ if(E('bookPreview').style.display==='none') buildBookPreview().then(()=>setTimeout(()=>window.print(),300));
+ else window.print();
+}
+function saveBookProject(){
+ try{
+  const project={
+    app:"Mystery Dot Studio Book",
+    build:"CBN.003",
+    savedAt:new Date().toISOString(),
+    book:{
+      title:E('bookTitle').value,
+      subtitle:E('bookSubtitle').value,
+      author:E('bookAuthor').value,
+      size:E('bookSize').value,
+      includeTitlePage:E('includeTitlePage').checked,
+      includeInstructions:E('includeInstructions').checked,
+      includeAnswerKey:E('includeAnswerKey').checked,
+      includePageNumbers:E('includePageNumbers').checked,
+      includeCopyright:E('includeCopyright')?E('includeCopyright').checked:false,
+      includeNotes:E('includeNotes')?E('includeNotes').checked:false,
+      notesCount:E('notesCount')?E('notesCount').value:0,
+      copyrightText:E('copyrightText')?E('copyrightText').value:''
+    },
+    renderSettings:gatherSettings(),
+    batchItems:batchItems.map(b=>({name:b.name,status:b.status}))
+  };
+  const name=(project.book.title||"mystery_dot_book").replace(/[^a-z0-9_-]+/gi,"_");
+  const blob=new Blob([JSON.stringify(project,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.download=name+"_book_project.mdsbook";
+  a.href=URL.createObjectURL(blob);
+  a.click();
+  E('bookStatus').textContent="Book project saved.";
+ }catch(e){fail(e)}
+}
+function escapeHtml(s){
+ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+
+
+
+function rgbToPaletteIndex(r,g,b,k){
+ const palette=[
+  [255,255,255,'White'],[35,35,35,'Black'],[155,155,155,'Gray'],[225,45,45,'Red'],
+  [40,120,220,'Blue'],[55,155,75,'Green'],[245,205,55,'Yellow'],[185,105,210,'Purple'],
+  [240,145,55,'Orange'],[90,200,200,'Teal'],[130,85,50,'Brown'],[245,170,195,'Pink'],
+  [115,190,95,'Light Green'],[110,160,210,'Light Blue'],[235,185,135,'Tan'],[255,230,165,'Cream']
+ ];
+ let best=0,bestD=Infinity;
+ for(let i=0;i<Math.min(k,palette.length);i++){
+  const p=palette[i], d=(r-p[0])*(r-p[0])+(g-p[1])*(g-p[1])+(b-p[2])*(b-p[2]);
+  if(d<bestD){bestD=d;best=i;}
+ }
+ return best;
+}
+function majoritySmooth(labels,w,h,passes){
+ let cur=labels.slice();
+ for(let p=0;p<passes;p++){
+  let next=cur.slice();
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+   const counts={};
+   for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++){
+    const v=cur[(y+yy)*w+(x+xx)]; counts[v]=(counts[v]||0)+1;
+   }
+   let best=cur[y*w+x],bestC=0;
+   Object.keys(counts).forEach(k=>{if(counts[k]>bestC){best=parseInt(k);bestC=counts[k];}});
+   next[y*w+x]=best;
+  }
+  cur=next;
+ }
+ return cur;
+}
+function buildRegions(labels,w,h){
+ const seen=new Uint8Array(w*h), regions=[], dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const idx=y*w+x; if(seen[idx])continue;
+  const color=labels[idx], stack=[idx], cells=[]; seen[idx]=1;
+  let sx=0,sy=0;
+  while(stack.length){
+   const cur=stack.pop(), cx=cur%w, cy=Math.floor(cur/w);
+   cells.push(cur); sx+=cx; sy+=cy;
+   for(const [dx,dy] of dirs){
+    const nx=cx+dx,ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h)continue;
+    const ni=ny*w+nx; if(!seen[ni]&&labels[ni]===color){seen[ni]=1;stack.push(ni);}
+   }
+  }
+  regions.push({color,cells,cx:sx/cells.length,cy:sy/cells.length});
+ }
+ return regions;
+}
+function removeTinyRegions(labels,w,h,minCells){
+ const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+ for(const r of buildRegions(labels,w,h)){
+  if(r.cells.length>=minCells)continue;
+  const counts={};
+  r.cells.forEach(idx=>{
+   const x=idx%w,y=Math.floor(idx/w);
+   for(const [dx,dy] of dirs){
+    const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+    const ni=ny*w+nx;if(labels[ni]!==r.color)counts[labels[ni]]=(counts[labels[ni]]||0)+1;
+   }
+  });
+  let best=r.color,bestC=0;Object.keys(counts).forEach(k=>{if(counts[k]>bestC){best=parseInt(k);bestC=counts[k];}});
+  r.cells.forEach(idx=>labels[idx]=best);
+ }
+ return labels;
+}
+function drawLabelBoundaries(labels,w,h,cell,line){
+ ctx.strokeStyle='black';ctx.lineWidth=line;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const id=labels[y*w+x], px=x*cell, py=y*cell;
+  if(y===0||labels[(y-1)*w+x]!==id){ctx.moveTo(px,py);ctx.lineTo(px+cell,py);}
+  if(x===w-1||labels[y*w+x+1]!==id){ctx.moveTo(px+cell,py);ctx.lineTo(px+cell,py+cell);}
+  if(y===h-1||labels[(y+1)*w+x]!==id){ctx.moveTo(px,py+cell);ctx.lineTo(px+cell,py+cell);}
+  if(x===0||labels[y*w+x-1]!==id){ctx.moveTo(px,py);ctx.lineTo(px,py+cell);}
+ }
+ ctx.stroke();
+}
+function drawOriginalEdgeLineArt(edgeDetail,line){
+ const sw=380, sh=Math.round(sw*out.height/out.width);
+ const off=document.createElement('canvas');off.width=sw;off.height=sh;
+ const o=off.getContext('2d',{willReadFrequently:true});
+ drawImageToCanvasContext(o,cropRect(),out.width,out.height);
+ const d=o.getImageData(0,0,sw,sh).data, gray=new Float32Array(sw*sh);
+ for(let i=0;i<sw*sh;i++)gray[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];
+ const th=92-edgeDetail*.62;
+ ctx.strokeStyle='black';ctx.lineWidth=Math.max(.35,line*.55);ctx.lineCap='round';ctx.beginPath();
+ for(let y=1;y<sh-1;y++)for(let x=1;x<sw-1;x++){
+  const i=y*sw+x, g=Math.abs(gray[i+1]-gray[i-1])+Math.abs(gray[i+sw]-gray[i-sw]);
+  if(g>th && ((x+y)&1)===0){const px=x/sw*out.width,py=y/sh*out.height;ctx.moveTo(px,py);ctx.lineTo(px+.75,py+.75);}
+ }
+ ctx.stroke();
+}
+function renderColorByNumber(){
+ ctx.fillStyle='white';ctx.fillRect(0,0,out.width,out.height);
+ if(!img){ctx.fillStyle='black';ctx.font='24px Arial';ctx.fillText('Open image first — CBN.003',32,60);return 0}
+ const cell=V('cbnCellSize'), k=V('cbnColors'), line=V('cbnLine'), numSize=V('cbnNumberSize');
+ const gw=Math.ceil(out.width/cell), gh=Math.ceil(out.height/cell);
+ const off=document.createElement('canvas');off.width=gw;off.height=gh;
+ const o=off.getContext('2d',{willReadFrequently:true});
+ drawImageToCanvasContext(o,cropRect(),out.width,out.height);
+ const data=o.getImageData(0,0,gw,gh).data;
+ const palette=[
+  [255,255,255,'White'],[35,35,35,'Black'],[155,155,155,'Gray'],[225,45,45,'Red'],
+  [40,120,220,'Blue'],[55,155,75,'Green'],[245,205,55,'Yellow'],[185,105,210,'Purple'],
+  [240,145,55,'Orange'],[90,200,200,'Teal'],[130,85,50,'Brown'],[245,170,195,'Pink'],
+  [115,190,95,'Light Green'],[110,160,210,'Light Blue'],[235,185,135,'Tan'],[255,230,165,'Cream']
+ ];
+ let labels=new Array(gw*gh);
+ for(let i=0;i<gw*gh;i++)labels[i]=rgbToPaletteIndex(data[i*4],data[i*4+1],data[i*4+2],k);
+ labels=majoritySmooth(labels,gw,gh,V('cbnSmooth'));
+ labels=removeTinyRegions(labels,gw,gh,V('cbnMinRegion'));
+ labels=removeTinyRegions(labels,gw,gh,V('cbnMinRegion'));
+ const regions=buildRegions(labels,gw,gh);
+
+ if(view==='filled'){
+  const small=document.createElement('canvas');small.width=gw;small.height=gh;
+  const sctx=small.getContext('2d'), id=sctx.createImageData(gw,gh);
+  for(let i=0;i<gw*gh;i++){const p=palette[labels[i]];id.data[i*4]=p[0];id.data[i*4+1]=p[1];id.data[i*4+2]=p[2];id.data[i*4+3]=255;}
+  sctx.putImageData(id,0,0);
+  ctx.imageSmoothingEnabled=V('cbnPreviewSmooth')>0;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(small,0,0,out.width,out.height);
+  drawLabelBoundaries(labels,gw,gh,cell,line*.75);
+ }else{
+  ctx.fillStyle='white';ctx.fillRect(0,0,out.width,out.height);
+  drawLabelBoundaries(labels,gw,gh,cell,line);
+  drawOriginalEdgeLineArt(V('cbnEdgeDetail'),line);
+  ctx.fillStyle='black';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold '+numSize+'px Arial';
+  regions.forEach(r=>{
+   if(r.cells.length<Math.max(4,Math.floor(V('cbnMinRegion')*.45)))return;
+   const x=(r.cx+.5)*cell,y=(r.cy+.5)*cell;
+   if(x<12||y<12||x>out.width-12||y>out.height-70)return;
+   ctx.fillText(String(r.color+1),x,y);
+  });
+ }
+ drawColorKey(palette,k);dots=[];return regions.length;
+}
+function drawColorKey(palette,k){
+ const keyH=62,y0=out.height-keyH;
+ ctx.fillStyle='white';ctx.globalAlpha=.96;ctx.fillRect(0,y0,out.width,keyH);ctx.globalAlpha=1;
+ ctx.strokeStyle='#bbb';ctx.lineWidth=.6;ctx.strokeRect(0,y0,out.width,keyH);
+ const itemW=Math.max(44,Math.floor(out.width/k));
+ ctx.font='10px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+ for(let i=0;i<k;i++){
+  const x=i*itemW+itemW/2;if(x>out.width-18)break;
+  const p=palette[i];ctx.fillStyle=`rgb(${p[0]},${p[1]},${p[2]})`;
+  ctx.fillRect(x-10,y0+10,20,18);ctx.strokeStyle='black';ctx.lineWidth=.6;ctx.strokeRect(x-10,y0+10,20,18);
+  ctx.fillStyle=(i===1)?'white':'black';ctx.fillText(String(i+1),x,y0+19);
+  ctx.fillStyle='black';ctx.fillText(p[3],x,y0+44);
+ }
+}
+function render(){
+ clearLog();
+ try{
+   out.width=V('canvasW'); out.height=V('canvasH');
+   ctx.fillStyle='white'; ctx.fillRect(0,0,out.width,out.height);
+   dots=[];
+   if(!img){ctx.fillStyle='black';ctx.font='24px Arial';ctx.fillText('Open image or load project first — CBN.003',32,60);return}
+   if(E('activityType') && E('activityType').value==='colorByNumber'){
+     const count=renderColorByNumber();
+     log('Color by Number cells drawn: '+count);
+     log('Render complete.');
+     return;
+   }
+   const maps=buildMaps();
+   log("Maps built. Activity: "+(E("activityType")?E("activityType").value:"mysteryDots")+" | Engine: "+E('engine').value);
+   if(view==='original'){ctx.drawImage(maps.off,0,0,out.width,out.height);log("Original rendered.");return}
+   if(view==='importance'){drawMap(maps.imp,maps.w,maps.h);log("Detail map rendered.");return}
+   ctx.strokeStyle='black';ctx.fillStyle='black';
+   const count=E('engine').value==='hex'?drawHex(maps):drawClassic(maps);
+   log("Dots drawn: "+count);
+   log("Render complete.");
+ }catch(e){fail(e)}
+}
+function downloadPNG(){try{let a=document.createElement('a');a.download='mystery-dot-studio-CBN003-'+E('engine').value+'-'+view+'.png';a.href=out.toDataURL('image/png');a.click()}catch(e){fail(e)}}
+function downloadSVG(){
+ try{
+  let fill=view==='filled';
+  let svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+out.width+'" height="'+out.height+'" viewBox="0 0 '+out.width+' '+out.height+'"><rect width="100%" height="100%" fill="white"/><g stroke="black" '+(fill?'fill="black"':'fill="none"')+'>';
+  dots.filter(Boolean).forEach(d=>svg+='<circle cx="'+d.cx.toFixed(2)+'" cy="'+d.cy.toFixed(2)+'" r="'+d.r.toFixed(2)+'" stroke-width="'+d.sw.toFixed(2)+'"/>');
+  svg+='</g></svg>';
+  let a=document.createElement('a');a.download='mystery-dot-studio-CBN003-'+E('engine').value+'-'+view+'.svg';a.href=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));a.click();
+ }catch(e){fail(e)}
+}
+function copySettings(){
+ const s={build:'CBN.003',engine:E('engine').value,view:view};
+ ids.forEach(id=>s[id]=E(id).value);
+ navigator.clipboard?.writeText(JSON.stringify(s,null,2));
+ log("Settings copied. To save this single-image project, use Save .mds. Batch queue files are not embedded yet.");
+}
+renderModuleList();activityChanged();
+render();
+</script>
+</body>
+</html>
