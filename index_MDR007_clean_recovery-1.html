@@ -1,0 +1,251 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mystery Dot Studio 3.1 — Clean Recovery — Build MDR.007</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#fbfaff;color:#222}
+header{padding:14px 18px;background:white;border-bottom:1px solid #e6e0f2}
+h1{margin:0;color:#6d28d9;font-size:24px}.sub{color:#667085;font-size:13px}
+.wrap{display:grid;grid-template-columns:370px 1fr;gap:12px;padding:12px}
+.card{background:white;border:1px solid #e6e0f2;border-radius:12px;padding:14px}
+button,label.file{border:1px solid #e6e0f2;background:white;border-radius:9px;padding:9px 12px;font-weight:700;display:inline-block;margin:3px}
+.primary,.active{background:#6d28d9!important;color:white!important}
+input[type=file]{display:none}
+label{display:block;font-size:12px;font-weight:700;margin-top:10px}
+.row{display:grid;grid-template-columns:1fr 70px;gap:8px;align-items:center}
+.row span{border:1px solid #e6e0f2;border-radius:7px;padding:5px;text-align:center;font-size:12px}
+input[type=range]{width:100%;accent-color:#6d28d9}
+canvas{display:block;width:100%;height:auto;background:white;border:2px solid #6d28d9;border-radius:10px}
+.status,pre{white-space:pre-wrap;background:#111;color:#9cff9c;border-radius:9px;padding:10px;font-size:12px;line-height:1.35;max-height:220px;overflow:auto}
+.small{font-size:13px;color:#667085;line-height:1.4}
+.preset{background:#f5f0ff}
+@media(max-width:800px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>Mystery Dot Studio 3.1 — Clean Recovery</h1>
+<div class="sub"><b>Build MDR.007</b> — Clean recovery baseline built directly from the original Stable Adaptive V4 renderer. Hollow outlined dots and solid filled previews remain separate.</div>
+</header>
+
+<div class="wrap">
+<aside class="card">
+<h3>Image</h3>
+<label class="file primary" for="file">Open Image</label>
+<input id="file" type="file" accept="image/*">
+<button onclick="runAll()">Generate</button>
+<button class="preset" onclick="balanced()">Balanced SA1</button>
+<button class="preset" onclick="detail()">Detail SA1</button>
+
+<h3>View</h3>
+<button id="btnDots" class="active" onclick="setView('dots')">Outlined Dots</button>
+<button id="btnFilled" onclick="setView('filled')">Filled Preview</button>
+<button id="btnImportance" onclick="setView('importance')">Importance Map</button>
+<button id="btnOriginal" onclick="setView('original')">Original</button>
+
+<h3>Canvas / Crop</h3>
+<label>Canvas Width</label><div class="row"><input id="canvasW" type="range" min="300" max="1200" value="750"><span id="canvasWVal"></span></div>
+<label>Canvas Height</label><div class="row"><input id="canvasH" type="range" min="300" max="1600" value="1000"><span id="canvasHVal"></span></div>
+<label>Zoom</label><div class="row"><input id="zoom" type="range" min="70" max="220" value="110"><span id="zoomVal"></span></div>
+
+<h3>Stable Adaptive Spacing</h3>
+<label>Base Dot Spacing</label><div class="row"><input id="space" type="range" min="7" max="30" value="12"><span id="spaceVal"></span></div>
+<label>Detail Adaptive Strength</label><div class="row"><input id="adaptive" type="range" min="0" max="100" value="38"><span id="adaptiveVal"></span></div>
+<label>Feature Tightening</label><div class="row"><input id="tighten" type="range" min="0" max="100" value="42"><span id="tightenVal"></span></div>
+<label>Flat Area Loosening</label><div class="row"><input id="loosen" type="range" min="0" max="100" value="28"><span id="loosenVal"></span></div>
+<label>Detail Field Smooth</label><div class="row"><input id="impSmooth" type="range" min="0" max="20" value="7"><span id="impSmoothVal"></span></div>
+<label>Edge Weight</label><div class="row"><input id="edgeWeight" type="range" min="0" max="100" value="70"><span id="edgeWeightVal"></span></div>
+<label>Texture Weight</label><div class="row"><input id="textureWeight" type="range" min="0" max="100" value="55"><span id="textureWeightVal"></span></div>
+<label>Midtone Weight</label><div class="row"><input id="midtoneWeight" type="range" min="0" max="100" value="28"><span id="midtoneWeightVal"></span></div>
+<label>Adaptive Dot Size</label><div class="row"><input id="adaptiveDotSize" type="range" min="0" max="100" value="18"><span id="adaptiveDotSizeVal"></span></div>
+<label>Adaptive Ring Thickness</label><div class="row"><input id="adaptiveStroke" type="range" min="0" max="100" value="24"><span id="adaptiveStrokeVal"></span></div>
+<label>Stroke Safety</label><div class="row"><input id="strokeSafety" type="range" min="0" max="100" value="68"><span id="strokeSafetyVal"></span></div>
+
+<h3>Dots / Tone</h3>
+<label>Dot Size</label><div class="row"><input id="dotSize" type="range" min=".1" max="1.5" step=".01" value=".75"><span id="dotSizeVal"></span></div>
+<label>Growth Curve</label><div class="row"><input id="growth" type="range" min=".3" max="2.5" step=".05" value=".85"><span id="growthVal"></span></div>
+<label>Local Contrast</label><div class="row"><input id="contrast" type="range" min="0" max="100" value="16"><span id="contrastVal"></span></div>
+<label>Gamma</label><div class="row"><input id="gamma" type="range" min=".3" max="2.5" step=".05" value=".84"><span id="gammaVal"></span></div>
+<label>Circle Stroke</label><div class="row"><input id="stroke" type="range" min=".2" max="3" step=".05" value=".8"><span id="strokeVal"></span></div>
+<label>Minimum Dot</label><div class="row"><input id="minDot" type="range" min="0" max="4" step=".05" value=".2"><span id="minDotVal"></span></div>
+
+<p class="small"><b>MDR.007:</b> This should not go blank. SA4 keeps the stable renderer and uses local detail to adapt spacing, dot diameter, and circle outline thickness.</p>
+<h3>Status</h3>
+<pre id="log">MDR.007 loaded.</pre>
+</aside>
+
+<main class="card">
+<button class="primary" onclick="downloadPNG()">Download PNG</button>
+<button onclick="downloadSVG()">Download SVG</button>
+<canvas id="out" width="750" height="1000"></canvas>
+</main>
+</div>
+
+<script>
+let img=null, view='dots', dots=[];
+const out=document.getElementById('out');
+const ctx=out.getContext('2d');
+const ids=['canvasW','canvasH','zoom','space','adaptive','tighten','loosen','impSmooth','edgeWeight','textureWeight','midtoneWeight','adaptiveDotSize','adaptiveStroke','strokeSafety','dotSize','growth','contrast','gamma','stroke','minDot'];
+
+function E(id){return document.getElementById(id)}
+function V(id){return parseFloat(E(id).value)}
+function setv(id,v){E(id).value=v}
+function log(msg){E('log').textContent += "\\n" + msg; E('log').scrollTop=E('log').scrollHeight}
+function clearLog(){E('log').textContent='MDR.007 log started.'}
+function fail(err){log("ERROR: " + (err && err.message ? err.message : err)); if(err && err.stack) log(err.stack)}
+function sync(){ids.forEach(id=>E(id+'Val').textContent=E(id).value)}
+ids.forEach(id=>E(id).addEventListener('input',()=>{sync(); out.width=V('canvasW'); out.height=V('canvasH'); if(img)runAll()}));
+sync();
+
+function balanced(){
+ setv('adaptive',38);setv('tighten',42);setv('loosen',28);setv('impSmooth',7);setv('edgeWeight',70);setv('textureWeight',55);setv('midtoneWeight',28);setv('adaptiveDotSize',18);setv('adaptiveStroke',24);setv('strokeSafety',68);
+ setv('dotSize',.75);setv('growth',.85);setv('contrast',16);setv('gamma',.84);setv('stroke',.8);setv('minDot',.2);sync();if(img)runAll();
+}
+function detail(){
+ setv('adaptive',48);setv('tighten',52);setv('loosen',34);setv('impSmooth',6);setv('edgeWeight',80);setv('textureWeight',68);setv('midtoneWeight',32);setv('adaptiveDotSize',24);setv('adaptiveStroke',32);setv('strokeSafety',64);
+ setv('dotSize',.74);setv('growth',.82);setv('contrast',20);setv('gamma',.82);setv('stroke',.8);setv('minDot',.2);sync();if(img)runAll();
+}
+
+window.onerror=function(message,source,lineno,colno,error){ fail("Window error line "+lineno+": "+message); };
+
+function setView(v){
+ view=v;
+ ['Dots','Filled','Importance','Original'].forEach(n=>E('btn'+n).classList.toggle('active',n.toLowerCase()===v));
+ if(img)runAll();
+}
+
+E('file').addEventListener('change',e=>{
+ clearLog();
+ try{
+  const f=e.target.files[0];
+  if(!f){log("No file selected.");return}
+  log("Selected file: "+f.name+" ("+f.size+" bytes)");
+  const r=new FileReader();
+  r.onload=ev=>{
+    log("FileReader loaded.");
+    const im=new Image();
+    im.onload=()=>{img=im;log("Image decoded: "+im.naturalWidth+" x "+im.naturalHeight);runAll();};
+    im.onerror=()=>fail("Image decode failed.");
+    im.src=ev.target.result;
+  };
+  r.onerror=()=>fail("FileReader failed.");
+  r.readAsDataURL(f);
+ }catch(e){fail(e)}
+});
+
+function cropRect(){
+ const iw=img.naturalWidth, ih=img.naturalHeight, asp=out.width/out.height, z=V('zoom')/100;
+ let sw=iw/z, sh=sw/asp;
+ if(sh>ih/z){sh=ih/z; sw=sh*asp}
+ return {sx:(iw-sw)/2, sy:(ih-sh)/2, sw, sh};
+}
+function blurOne(a,w,h){
+ let b=new Float32Array(a);
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+   let i=y*w+x;
+   b[i]=(a[i]*4+a[i-1]+a[i+1]+a[i-w]+a[i+w]+a[i-w-1]+a[i-w+1]+a[i+w-1]+a[i+w+1])/12;
+ }
+ return b;
+}
+function blurArr(a,w,h,n){let r=a;for(let i=0;i<n;i++)r=blurOne(r,w,h);return r}
+function val(a,w,h,x,y){x=Math.max(0,Math.min(w-1,Math.floor(x)));y=Math.max(0,Math.min(h-1,Math.floor(y)));return a[y*w+x]}
+function bilinear(a,w,h,x,y){
+ let x0=Math.floor(x), y0=Math.floor(y), fx=x-x0, fy=y-y0;
+ let A=val(a,w,h,x0,y0),B=val(a,w,h,x0+1,y0),C=val(a,w,h,x0,y0+1),D=val(a,w,h,x0+1,y0+1);
+ return A*(1-fx)*(1-fy)+B*fx*(1-fy)+C*(1-fx)*fy+D*fx*fy;
+}
+function buildMaps(){
+ const sampleW=260, sampleH=Math.round(sampleW*out.height/out.width);
+ const off=document.createElement('canvas');
+ off.width=sampleW; off.height=sampleH;
+ const o=off.getContext('2d',{willReadFrequently:true});
+ o.fillStyle='white'; o.fillRect(0,0,sampleW,sampleH);
+ const c=cropRect();
+ o.drawImage(img,c.sx,c.sy,c.sw,c.sh,0,0,sampleW,sampleH);
+ const data=o.getImageData(0,0,sampleW,sampleH).data;
+ let raw=new Float32Array(sampleW*sampleH);
+ for(let i=0;i<sampleW*sampleH;i++){raw[i]=1-(.299*data[i*4]+.587*data[i*4+1]+.114*data[i*4+2])/255}
+ let smooth=blurArr(raw,sampleW,sampleH,3), broad=blurArr(raw,sampleW,sampleH,8), fine=blurArr(raw,sampleW,sampleH,1);
+ let tone=new Float32Array(raw.length), imp=new Float32Array(raw.length);
+ const contrast=V('contrast')/100, gamma=V('gamma');
+ const ew=V('edgeWeight')/100, tw=V('textureWeight')/100, mw=V('midtoneWeight')/100;
+ for(let y=1;y<sampleH-1;y++)for(let x=1;x<sampleW-1;x++){
+   let i=y*sampleW+x;
+   let gx=Math.abs(raw[i+1]-raw[i-1]);
+   let gy=Math.abs(raw[i+sampleW]-raw[i-sampleW]);
+   let edge=Math.min(1,(gx+gy)*3.4);
+   let texture=Math.min(1,Math.abs(raw[i]-smooth[i])*4.2 + Math.abs(fine[i]-smooth[i])*2.2);
+   let localVar=0;
+   localVar += Math.abs(raw[i]-raw[i-1])+Math.abs(raw[i]-raw[i+1])+Math.abs(raw[i]-raw[i-sampleW])+Math.abs(raw[i]-raw[i+sampleW]);
+   localVar=Math.min(1,localVar*1.5);
+   let t=raw[i]+(raw[i]-broad[i])*contrast;
+   t=Math.max(0,Math.min(1,t));
+   tone[i]=Math.pow(t,gamma);
+   let mid=Math.sin(Math.PI*tone[i]);
+   imp[i]=Math.max(edge*ew, texture*tw, localVar*tw*.65, mid*mw);
+ }
+ imp=blurArr(imp,sampleW,sampleH,V('impSmooth'));
+ return {off,tone,imp,w:sampleW,h:sampleH};
+}
+function drawMap(a,w,h){
+ const im=ctx.createImageData(w,h);
+ for(let i=0;i<w*h;i++){let p=255-a[i]*255;im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=p;im.data[i*4+3]=255}
+ const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').putImageData(im,0,0);
+ ctx.imageSmoothingEnabled=false;ctx.drawImage(tmp,0,0,out.width,out.height);
+}
+function runAll(){
+ clearLog();
+ try{
+  out.width=V('canvasW'); out.height=V('canvasH');
+  log("Canvas: "+out.width+" x "+out.height);
+  ctx.fillStyle='white'; ctx.fillRect(0,0,out.width,out.height);
+  if(!img){ctx.fillStyle='black';ctx.font='24px Arial';ctx.fillText('Open image first — MDR.007',32,60);return}
+  const maps=buildMaps();
+  log("Maps built: "+maps.w+" x "+maps.h);
+  if(view==='original'){ctx.drawImage(maps.off,0,0,out.width,out.height);log("Original rendered.");return}
+  if(view==='importance'){drawMap(maps.imp,maps.w,maps.h);log("Importance map rendered.");return}
+  const base=V('space'), adapt=V('adaptive')/100, tighten=V('tighten')/100, loosen=V('loosen')/100;
+  const dotSize=V('dotSize'), growth=V('growth'), minDot=V('minDot'), stroke=V('stroke');
+  let count=0;
+  ctx.strokeStyle='black'; ctx.fillStyle='black';
+  for(let y=0;y<out.height;y+=base){
+    for(let x=0;x<out.width;){
+      const sx=x/out.width*maps.w, sy=y/out.height*maps.h;
+      const t=Math.pow(Math.max(0,Math.min(1,bilinear(maps.tone,maps.w,maps.h,sx,sy))),growth);
+      const im=bilinear(maps.imp,maps.w,maps.h,sx,sy);
+      const factor=1 - adapt*tighten*im*.52 + adapt*loosen*(1-im)*.34;
+      const localSpace=Math.max(base*.58,Math.min(base*1.42,base*factor));
+      let sizeBoost=1 + (V('adaptiveDotSize')/100)*im*.22 - (V('adaptiveDotSize')/100)*(1-im)*.08;
+      let r=minDot+t*((localSpace/2)*dotSize*sizeBoost-minDot);
+      if(r>.05){
+        let safe=V('strokeSafety')/100;
+        let sw=stroke*(1 + (V('adaptiveStroke')/100)*im*(1-safe*.55));
+        ctx.lineWidth=sw;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+        if(view==='filled')ctx.fill();else ctx.stroke();
+        dots[count]={cx:x,cy:y,r:r,sw:sw,filled:view==='filled'};
+        count++;
+      }
+      x += localSpace;
+    }
+  }
+  log("Dots drawn: "+count);
+  log("Render completed.");
+ }catch(e){fail(e)}
+}
+function downloadPNG(){try{let a=document.createElement('a');a.download='mystery-dot-stable-adaptive-SA4-001.png';a.href=out.toDataURL('image/png');a.click()}catch(e){fail(e)}}
+function downloadSVG(){
+ try{
+  let fill=view==='filled';
+  let svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+out.width+'" height="'+out.height+'" viewBox="0 0 '+out.width+' '+out.height+'"><rect width="100%" height="100%" fill="white"/><g stroke="black" '+(fill?'fill="black"':'fill="none"')+'>';
+  dots.filter(Boolean).forEach(d=>svg+='<circle cx="'+d.cx.toFixed(2)+'" cy="'+d.cy.toFixed(2)+'" r="'+d.r.toFixed(2)+'" stroke-width="'+d.sw.toFixed(2)+'"/>');
+  svg+='</g></svg>';let a=document.createElement('a');a.download='mystery-dot-stable-adaptive-SA4-001.svg';a.href=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));a.click();
+ }catch(e){fail(e)}
+}
+runAll();
+</script>
+</body>
+</html>
+<!-- MDR007 clean recovery: renderer preserved from SA4.001 -->
